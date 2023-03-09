@@ -1,4 +1,4 @@
-package logger
+package support
 
 import (
 	"github.com/rs/zerolog"
@@ -7,25 +7,28 @@ import (
 	"time"
 )
 
-func Pretty() {
+func LoggerConsole() {
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMicro}).
 		With().
 		Timestamp().
 		Caller().
-		Logger()
+		Logger().
+		Level(zerolog.DebugLevel)
 	zerolog.DefaultContextLogger = &log.Logger
 }
 
-func Json(host string, app string, env string) {
+func LoggerCloud() {
 	zerolog.TimeFieldFormat = time.RFC3339
 	log.Logger = zerolog.New(os.Stderr).
 		With().
 		Timestamp().
 		Caller().
-		Str("host", host).
-		Str("app", app).
-		Str("env", env).
-		Logger()
+		Str("instance", AppInfo.Instance).
+		Str("version", AppInfo.Version).
+		Str("app", AppInfo.Name).
+		Str("namespace", AppInfo.Namespace).
+		Logger().
+		Level(zerolog.InfoLevel)
 	zerolog.DefaultContextLogger = &log.Logger
 
 }
