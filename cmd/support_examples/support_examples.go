@@ -1,3 +1,4 @@
+//go:generate ./build_info.sh
 package main
 
 import (
@@ -5,25 +6,43 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
+	"microserver.rockyrunstream.com/foundation/config"
+	"microserver.rockyrunstream.com/foundation/logger"
 	"microserver.rockyrunstream.com/foundation/support"
+	"microserver.rockyrunstream.com/foundation/telemetry"
+	"os"
 	"time"
 )
 
+type Configuration struct {
+	App       support.Manifest
+	Log       logger.Configuration
+	Telemetry telemetry.Configuration
+}
+
 func main() {
-	support.LoggerConsole()
-	//support.LoggerCloud("host-1", "test app", "dev")
 
-	support.MetricNoOps()
-	//defer support.MetricConsole()()
+	// ctx := context.Background()
+	cfg := Configuration{}
+	if err := config.Read(&cfg); err != nil {
+		fmt.Printf("failed to read initial configuration %v", err)
+		os.Exit(1)
+	}
+	cfg.App.Name = "Example"
+	cfg.App.Version = version
+	// Init App Info
+	support.AppManifest = cfg.App
 
-	support.TraceNoOps()
-	//defer support.TraceConsole()()
+	// Init Logger
+	logger.InitLogger(cfg.Log)
+	telemetry.InitTelemetry(cfg.Telemetry)
 
 	support.DumpAppInfo()
-
 	logs()
 	metrics()
 	traces()
+
+	telemetry.Shutdown()
 }
 
 func logs() {
@@ -39,7 +58,7 @@ func metrics() {
 	log.Debug().Msg("Testing metrics")
 
 	// Prepare
-	counter, err := support.Meter.Int64Counter("some_counter")
+	counter, err := telemetry.Meter.Int64Counter("some_counter")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Can not create some_counter")
 	}
@@ -57,9 +76,9 @@ func metrics() {
 func traces() {
 	log.Debug().Msg("Testing traces")
 	ctx := context.Background()
-	ctx, topSpan := support.Tracer.Start(ctx, "top")
+	ctx, topSpan := telemetry.Tracer.Start(ctx, "top")
 	for i := 0; i < 3; i++ {
-		_, nestedSpan := support.Tracer.Start(ctx, fmt.Sprintf("nestedSpan %d", i))
+		_, nestedSpan := telemetry.Tracer.Start(ctx, fmt.Sprintf("nestedSpan %d", i))
 		time.Sleep(time.Millisecond * 10)
 		nestedSpan.End()
 

@@ -1,4 +1,4 @@
-package support
+package telemetry
 
 import (
 	"context"
@@ -10,34 +10,42 @@ import (
 )
 
 var Tracer trace.Tracer
+var tracerProvider *sdk.TracerProvider
 
-func TraceNoOps() {
+func traceNoOps() {
 	provider := trace.NewNoopTracerProvider()
 	Tracer = provider.Tracer("application")
 }
 
-func TraceConsole() func() {
+func traceConsole() func() {
 	exporter, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to initialize stdout trace exporter")
 	}
 
-	provider := sdk.NewTracerProvider(
+	tracerProvider = sdk.NewTracerProvider(
 		sdk.WithBatcher(exporter),
-		sdk.WithResource(Resource()),
+		sdk.WithResource(newResource()),
 	)
-	otel.SetTracerProvider(provider)
+	otel.SetTracerProvider(tracerProvider)
 
-	Tracer = provider.Tracer("tracer")
+	Tracer = tracerProvider.Tracer("tracer")
 
 	log.Info().Msg("stdout trace exporter initialized")
 	return func() {
-		log.Info().Msg("Stopping stdout trace exporter")
-		ctx := context.Background()
-
-		if err := provider.Shutdown(ctx); err != nil {
-			log.Error().Err(err).Msg("stdout trace exporter shutdown failed")
-		}
-		log.Info().Msg("stdout trace exporter stopped")
 	}
+}
+
+func shutdownConsole() {
+	if tracerProvider == nil {
+		return
+	}
+	log.Info().Msg("Stopping stdout trace exporter")
+	ctx := context.Background()
+
+	if err := tracerProvider.Shutdown(ctx); err != nil {
+		log.Error().Err(err).Msg("stdout trace exporter shutdown failed")
+	}
+	log.Info().Msg("stdout trace exporter stopped")
+
 }

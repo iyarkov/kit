@@ -1,4 +1,4 @@
-package support
+package telemetry
 
 import (
 	"context"
@@ -11,12 +11,13 @@ import (
 )
 
 var Meter metric.Meter
+var metricProvider *sdk.MeterProvider
 
-func MetricNoOps() {
+func metricNoOps() {
 	Meter = metric.NewNoopMeter()
 }
 
-func MetricConsole() func() {
+func metricConsole() {
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	exporter, err := stdoutmetric.New(stdoutmetric.WithEncoder(encoder))
@@ -24,25 +25,28 @@ func MetricConsole() func() {
 		log.Panic().Err(err).Msg("failed to initialize stdout metric exporter")
 	}
 
-	res := Resource()
 	// Register the exporter with an SDK via a periodic reader.
-	provider := sdk.NewMeterProvider(
-		sdk.WithResource(res),
+	metricProvider = sdk.NewMeterProvider(
+		sdk.WithResource(newResource()),
 		sdk.WithReader(sdk.NewPeriodicReader(exporter)),
 	)
-	Meter = provider.Meter(
+	Meter = metricProvider.Meter(
 		"meter",
 		metric.WithInstrumentationVersion("1.0"),
 		metric.WithSchemaURL("my.app.com"),
 	)
 	log.Info().Msg("stdout metric exporter initialized")
-	return func() {
-		log.Info().Msg("Stopping stdout metric exporter")
-		ctx := context.Background()
+}
 
-		if err := provider.Shutdown(ctx); err != nil {
-			log.Error().Err(err).Msg("stdout metric exporter shutdown failed")
-		}
-		log.Info().Msg("stdout metric exporter stopped")
+func shutdownMetric() {
+	if metricProvider == nil {
+		return
 	}
+	log.Info().Msg("Stopping stdout metric exporter")
+	ctx := context.Background()
+
+	if err := metricProvider.Shutdown(ctx); err != nil {
+		log.Error().Err(err).Msg("stdout metric exporter shutdown failed")
+	}
+	log.Info().Msg("stdout metric exporter stopped")
 }

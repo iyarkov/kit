@@ -2,8 +2,6 @@ package support
 
 import (
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 )
 
 type Manifest struct {
@@ -13,7 +11,7 @@ type Manifest struct {
 	Namespace string
 }
 
-var AppInfo = Manifest{
+var AppManifest = Manifest{
 	Instance:  "Node-1",
 	Name:      "Experiment",
 	Version:   "1.0.0.123",
@@ -22,18 +20,8 @@ var AppInfo = Manifest{
 
 func DumpAppInfo() {
 	log.Info().Msg("Application info")
-	log.Info().Str("Instance", AppInfo.Instance).Send()
-	log.Info().Str("Name", AppInfo.Name).Send()
-	log.Info().Str("Version", AppInfo.Version).Send()
-	log.Info().Str("Namespace", AppInfo.Namespace).Send()
-}
-
-func Resource() *resource.Resource {
-	return resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.ServiceInstanceID(AppInfo.Instance),
-		semconv.ServiceName(AppInfo.Name),
-		semconv.ServiceVersion(AppInfo.Version),
-		semconv.ServiceNamespace(AppInfo.Namespace),
-	)
+	log.Info().Str("Instance", AppManifest.Instance).Send()
+	log.Info().Str("Name", AppManifest.Name).Send()
+	log.Info().Str("Version", AppManifest.Version).Send()
+	log.Info().Str("Namespace", AppManifest.Namespace).Send()
 }
