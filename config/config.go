@@ -11,10 +11,26 @@ import (
 	"unicode"
 )
 
-type Password string
+type Password struct {
+	value string
+}
 
-func (p Password) String() string {
-	return "*****"
+func NewPassword(value string) Password {
+	return Password{
+		value: value,
+	}
+}
+
+func (p *Password) Value() string {
+	return p.value
+}
+
+type DbConfig struct {
+	Host     string
+	Port     uint16
+	User     string
+	Password Password
+	DbName   string
 }
 
 func Read(val any) error {
@@ -163,7 +179,9 @@ func updateConfigField(conf reflect.Value, key, value string) error {
 		}
 	}
 
-	if field.Kind() == reflect.Struct {
+	if field.Type() == reflect.TypeOf(Password{}) {
+		field.Set(reflect.ValueOf(NewPassword(value)))
+	} else if field.Kind() == reflect.Struct {
 		if err := updateConfigField(field, subpath, value); err != nil {
 			return err
 		}

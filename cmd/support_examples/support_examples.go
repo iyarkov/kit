@@ -3,11 +3,15 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
 	"microserver.rockyrunstream.com/foundation/config"
 	"microserver.rockyrunstream.com/foundation/logger"
+	"microserver.rockyrunstream.com/foundation/schema"
 	"microserver.rockyrunstream.com/foundation/support"
 	"microserver.rockyrunstream.com/foundation/telemetry"
 	"os"
@@ -18,6 +22,7 @@ type Configuration struct {
 	App       support.Manifest
 	Log       logger.Configuration
 	Telemetry telemetry.Configuration
+	Db        config.DbConfig
 }
 
 func main() {
@@ -37,10 +42,13 @@ func main() {
 	logger.InitLogger(cfg.Log)
 	telemetry.InitTelemetry(cfg.Telemetry)
 
-	support.DumpAppInfo()
+	log.Info().Any("configuration", cfg).Send()
+
+	// Connect to the DB
 	logs()
 	metrics()
 	traces()
+	db(cfg.Db)
 
 	telemetry.Shutdown()
 }
@@ -85,4 +93,32 @@ func traces() {
 	}
 	topSpan.End()
 	log.Debug().Msg("Testing Done")
+}
+
+func db(cfg config.DbConfig) {
+	ctx := context.Background()
+	lg := zerolog.Ctx(ctx).With().Str("thread", "init").Logger()
+	lg.Info().Msg("Initializing the database")
+	psqlconn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Host,
+		cfg.Port,
+		cfg.User,
+		cfg.Password.Value(),
+		cfg.DbName)
+
+	db, err := sql.Open("pgx", psqlconn)
+	if err != nil {
+		lg.Fatal().Err(err).Msg("DB connection failed")
+	}
+	defer func() {
+		closeErr := db.Close()
+		if closeErr != nil {
+			lg.Warn().Err(closeErr).Msg("Failed to close the DB")
+		}
+	}()
+
+	err = schema.Update(ctx, db, changeset)
+	if err != nil {
+		lg.Fatal().Err(err).Msg("DB schema upgrade failed")
+	}
 }

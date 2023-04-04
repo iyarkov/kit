@@ -86,8 +86,8 @@ func assertEqual(t *testing.T, expected, actual *topConfig) {
 	if expected.FloatVal != actual.FloatVal {
 		t.Errorf("FloatVal [%f]!=[%f]", expected.FloatVal, actual.FloatVal)
 	}
-	if expected.PwdVal != actual.PwdVal {
-		t.Errorf("PwdVal [%s]!=[%s]", string(expected.PwdVal), string(actual.PwdVal))
+	if expected.PwdVal.Value() != actual.PwdVal.Value() {
+		t.Errorf("PwdVal [%s]!=[%s]", expected.PwdVal.Value(), actual.PwdVal.Value())
 	}
 	assertEqualL2(t, &expected.Left, &actual.Left, "left")
 	assertEqualL2(t, &expected.Right, &actual.Right, "right")
@@ -162,7 +162,7 @@ func TestUpdateVal(t *testing.T) {
 		{
 			name: "PwdVal",
 			expected: topConfig{
-				PwdVal: "topSecret",
+				PwdVal: NewPassword("topSecret"),
 			},
 			params: map[string]string{
 				"PwdVal": "topSecret",
