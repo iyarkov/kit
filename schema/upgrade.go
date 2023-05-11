@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog"
+	"microserver.rockyrunstream.com/foundation/support"
 	"time"
 )
 
@@ -16,84 +17,62 @@ type Change struct {
 	Timeout  time.Duration
 }
 
-var ErrInvalidChangeset = fmt.Errorf("InvalidChangeset")
+type HistoryRecord struct {
+	Id        int32
+	CreatedAt time.Time
+	Version   string
+}
 
-const DefaultTimeout = time.Second * 30
-
-func Update(ctx context.Context, db *sql.DB, changeset []Change) error {
+func Update(ctx context.Context, db *sql.DB, changeset []Change) (string, string, error) {
 	if !assertChangeset(ctx, changeset) {
-		return ErrInvalidChangeset
+		return "", "", ErrInvalidChangeset
 	}
 
 	if err := ensureSchemaTable(ctx, db); err != nil {
-		return err
+		return "", "", err
 	}
 
-	currentVersion, err := getVersion(ctx, db)
+	history, err := LoadHistory(ctx, db)
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	log := zerolog.Ctx(ctx)
-	log.Debug().Msgf("Current DB version %s", currentVersion)
-	startChangesetIdx := findStartIdx(currentVersion, changeset)
-	if startChangesetIdx == -1 || startChangesetIdx == len(changeset) {
-		log.Info().Msgf("DB schema version %s, upgrade is not required", currentVersion)
-		return nil
-	}
-	for i := startChangesetIdx; i < len(changeset); i++ {
-		change := changeset[i]
-		if err := applyChange(ctx, db, change); err != nil {
-			return err
+	dbVersion := ""
+	versionMap := make(map[string]bool, 0)
+	if len(history) > 0 {
+		dbVersion = history[0].Version
+		for _, r := range history {
+			versionMap[r.Version] = true
 		}
 	}
-	log.Info().Msgf("Database upgraded from %s to %s", currentVersion, changeset[len(changeset)-1].Version)
-	return nil
-}
-
-func ensureSchemaTable(ctx context.Context, db *sql.DB) error {
-	ctx, cancel := context.WithTimeout(ctx, DefaultTimeout)
-	defer cancel()
-
-	// Check the table exists
-	row := db.QueryRowContext(ctx, `
-SELECT EXISTS (
-	SELECT FROM pg_tables WHERE
-schemaname = 'public' AND
-tablename  = 'schema_history'
-)`)
-	if row.Err() != nil {
-		return fmt.Errorf("ensure table, table exist query failed: %w", row.Err())
-	}
-	var tableExist bool
-	if err := row.Scan(&tableExist); err != nil {
-		return fmt.Errorf("ensure table, table exist scan failed: %w", err)
-	}
-
-	if tableExist {
-		return nil
-	}
-
-	_, err := db.ExecContext(ctx, `
-CREATE TABLE schema_history (
-	id SERIAL,
-	created_at TIMESTAMP(3) WITHOUT TIME ZONE,
-	version VARCHAR(255),
-	PRIMARY KEY (id)
-)`)
-	if err != nil {
-		return fmt.Errorf("ensure table, create table query failed: %w", err)
-	}
-
 	log := zerolog.Ctx(ctx)
-	log.Info().Msg("schema table has been created")
-	return nil
+	log.Debug().Msgf("Current DB version %s", dbVersion)
+
+	expectedVersion := ""
+	changed := false
+	for _, change := range changeset {
+		expectedVersion = change.Version
+		if versionMap[change.Version] {
+			log.Debug().Msgf("Skip changeset %s", change.Version)
+			continue
+		}
+		if err = applyChange(ctx, db, change); err != nil {
+			return "", "", err
+		}
+		changed = true
+	}
+	if changed {
+		log.Info().Msgf("Database upgraded from %s to %s", dbVersion, expectedVersion)
+	} else {
+		log.Info().Msgf("Database upgraded no required, DB version: %s, expected version: %s ", dbVersion, expectedVersion)
+	}
+	return dbVersion, expectedVersion, nil
 }
 
-func getVersion(ctx context.Context, db *sql.DB) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, DefaultTimeout)
+func LoadDbVersion(ctx context.Context, db *sql.DB) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
 
-	row := db.QueryRowContext(ctx, `SELECT version FROM schema_history WHERE id = (SELECT MAX(id) FROM schema_history)`)
+	row := db.QueryRowContext(ctx, queryLastVersion)
 	if row.Err() != nil {
 		return "", fmt.Errorf("get version, version query failed: %w", row.Err())
 	}
@@ -107,6 +86,31 @@ func getVersion(ctx context.Context, db *sql.DB) (string, error) {
 		return "", fmt.Errorf("get version, version scan failed: %w", err)
 	}
 	return version, nil
+}
+
+func LoadHistory(ctx context.Context, db *sql.DB) ([]HistoryRecord, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
+	rows, err := db.QueryContext(ctx, queryLoadHistory)
+	defer support.CloseWithWarning(ctx, rows, "failed to close rows")
+	if err != nil {
+		return nil, fmt.Errorf("LoadHistory query failed: %w", err)
+	}
+
+	result := make([]HistoryRecord, 0)
+	record := HistoryRecord{}
+	for rows.Next() {
+		err = rows.Scan(&record.Id, &record.CreatedAt, &record.Version)
+		if err != nil {
+			return nil, fmt.Errorf("LoadHistory scan error: %w", err)
+		}
+		result = append(result, record)
+	}
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("after scan error: %w", rows.Err())
+	}
+	return result, nil
 }
 
 func assertChangeset(ctx context.Context, changeset []Change) bool {
@@ -137,16 +141,32 @@ func assertChangeset(ctx context.Context, changeset []Change) bool {
 	return valid
 }
 
-func findStartIdx(currentVersion string, changeset []Change) int {
-	if currentVersion == "" {
-		return 0
+func ensureSchemaTable(ctx context.Context, db *sql.DB) error {
+	ctx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+
+	// Check the table exists
+	row := db.QueryRowContext(ctx, queryTableExists, defaultSchema)
+	if row.Err() != nil {
+		return fmt.Errorf("ensure table, table exist query failed: %w", row.Err())
 	}
-	for i, change := range changeset {
-		if change.Version == currentVersion {
-			return i + 1
-		}
+	var tableExist bool
+	if err := row.Scan(&tableExist); err != nil {
+		return fmt.Errorf("ensure table, table exist scan failed: %w", err)
 	}
-	return -1
+
+	if tableExist {
+		return nil
+	}
+
+	_, err := db.ExecContext(ctx, queryCreateTable)
+	if err != nil {
+		return fmt.Errorf("ensure table, create table query failed: %w", err)
+	}
+
+	log := zerolog.Ctx(ctx)
+	log.Info().Msg("schema table has been created")
+	return nil
 }
 
 func applyChange(ctx context.Context, db *sql.DB, change Change) error {
@@ -157,7 +177,7 @@ func applyChange(ctx context.Context, db *sql.DB, change Change) error {
 	// Define timeout
 	var timeout time.Duration
 	if change.Timeout == 0 {
-		timeout = DefaultTimeout
+		timeout = defaultTimeout
 	} else {
 		timeout = change.Timeout
 	}
@@ -203,7 +223,7 @@ func applyChange(ctx context.Context, db *sql.DB, change Change) error {
 
 		// Update history
 		now := time.Now().UTC()
-		_, err = tx.ExecContext(ctx, "INSERT INTO schema_history(created_at, version) VALUES($1, $2)", now, change.Version)
+		_, err = tx.ExecContext(ctx, queryInsertVersion, now, change.Version)
 		if err != nil {
 			return fmt.Errorf("execute command, update history failed: %w", err)
 		}

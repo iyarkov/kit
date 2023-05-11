@@ -40,3 +40,16 @@ var changeset = []schema.Change{
 		},
 	},
 }
+
+var expectedSchema = schema.Schema{
+	Name: "public",
+	Tables: map[string]schema.Table{
+		"table_a": {
+			Columns: map[string]schema.Column{
+				"id": {
+					Type: "int4",
+				},
+			},
+		},
+	},
+}

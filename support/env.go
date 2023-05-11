@@ -21,7 +21,7 @@ var AppManifest = Manifest{
 func DumpAppInfo() {
 	log.Info().Msg("Application info")
 	log.Info().Str("Instance", AppManifest.Instance).Send()
-	log.Info().Str("Name", AppManifest.Name).Send()
+	log.Info().Str("name", AppManifest.Name).Send()
 	log.Info().Str("Version", AppManifest.Version).Send()
 	log.Info().Str("Namespace", AppManifest.Namespace).Send()
 }

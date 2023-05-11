@@ -2,11 +2,16 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
+type typeA struct {
+	value string
+}
+
 func main() {
-	for i, a := range os.Args {
-		fmt.Printf("argument %d : %s", i, a)
+	sl := map[int32]typeA{
+		0: {value: "1"},
 	}
+	fmt.Printf("Value [0]: %v\n", sl[0])
+	fmt.Printf("Value [1]: %v\n", sl[1])
 }

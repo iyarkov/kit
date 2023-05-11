@@ -117,8 +117,20 @@ func db(cfg config.DbConfig) {
 		}
 	}()
 
-	err = schema.Update(ctx, db, changeset)
+	_, _, err = schema.Update(ctx, db, changeset)
 	if err != nil {
 		lg.Fatal().Err(err).Msg("DB schema upgrade failed")
+	}
+	messages, err := schema.Validate(ctx, db, expectedSchema, false)
+	if err != nil {
+		lg.Fatal().Err(err).Msg("DB schema validation failed")
+	}
+	if len(messages) != 0 {
+		lg.Error().Msg("-------- DB schema invalid -------------")
+		for _, m := range messages {
+			lg.Error().Msgf("\t%s", m)
+		}
+		lg.Error().Msg("----------------------------------------")
+		lg.Fatal().Msg("Application aborted")
 	}
 }
