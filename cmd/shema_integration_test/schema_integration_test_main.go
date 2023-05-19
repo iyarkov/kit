@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"github.com/iyarkov/foundation/logger"
+	"github.com/iyarkov/foundation/schema"
+	"github.com/iyarkov/foundation/support"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/rs/zerolog/log"
-	"microserver.rockyrunstream.com/foundation/logger"
-	"microserver.rockyrunstream.com/foundation/schema"
-	"microserver.rockyrunstream.com/foundation/support"
 )
 
 var changeset = make([]schema.Change, 0)

@@ -1,9 +1,9 @@
 package logger
 
 import (
+	"github.com/iyarkov/foundation/support"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"microserver.rockyrunstream.com/foundation/support"
 	"os"
 	"time"
 )

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"microserver.rockyrunstream.com/foundation/schema"
+	"github.com/iyarkov/foundation/schema"
 )
 
 var changeset = []schema.Change{

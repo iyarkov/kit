@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"microserver.rockyrunstream.com/foundation/support"
+	"github.com/iyarkov/foundation/support"
 	"reflect"
 	"strings"
 	"testing"

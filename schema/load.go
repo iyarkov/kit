@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/iyarkov/foundation/support"
 	"github.com/rs/zerolog"
-	"microserver.rockyrunstream.com/foundation/support"
 )
 
 func loadTables(ctx context.Context, db *sql.DB, schema *Schema) error {

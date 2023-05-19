@@ -1,10 +1,10 @@
 package telemetry
 
 import (
+	"github.com/iyarkov/foundation/support"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
-	"microserver.rockyrunstream.com/foundation/support"
 )
 
 type Configuration struct {
