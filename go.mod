@@ -1,4 +1,4 @@
-module microserver.rockyrunstream.com/foundation
+module github.com/iyarkov/foundation
 
 go 1.19
 
