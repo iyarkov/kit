@@ -60,10 +60,15 @@ func InitLogger(config Configuration) {
 	log.Info().Msg("logger system initialized")
 }
 
-func SetContextLogger(ctx context.Context) context.Context {
-	idx := support.GetContextId(ctx)
+func WithLogger(ctx context.Context) context.Context {
+	idx := support.ContextId(ctx)
 	if idx != "" {
 		return log.Logger.With().Str("contextId", idx).Logger().WithContext(ctx)
 	}
 	return ctx
+}
+
+func WithContextIdAndLogger(ctx context.Context, contextId string) context.Context {
+	ctx = support.WithContextId(ctx, contextId)
+	return log.Logger.With().Str("contextId", contextId).Logger().WithContext(ctx)
 }
