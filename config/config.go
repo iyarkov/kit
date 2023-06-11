@@ -12,17 +12,21 @@ import (
 )
 
 type Password struct {
-	value string
+	value *string
 }
 
 func NewPassword(value string) Password {
 	return Password{
-		value: value,
+		value: &value,
 	}
 }
 
-func (p *Password) Value() string {
-	return p.value
+func (p Password) Value() string {
+	return *p.value
+}
+
+func (p Password) Format(f fmt.State, _ rune) {
+	_, _ = f.Write([]byte{'*', '*', '*'})
 }
 
 type DbConfig struct {
