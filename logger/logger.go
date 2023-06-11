@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"github.com/iyarkov/foundation/support"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -50,9 +51,19 @@ func InitLogger(config Configuration) {
 			With().
 			Timestamp().
 			Caller().
+			Stack().
 			Logger().
 			Level(level)
+
 		zerolog.DefaultContextLogger = &log.Logger
 	}
 	log.Info().Msg("logger system initialized")
+}
+
+func SetContextLogger(ctx context.Context) context.Context {
+	idx := support.GetContextId(ctx)
+	if idx != "" {
+		return log.Logger.With().Str("contextId", idx).Logger().WithContext(ctx)
+	}
+	return ctx
 }

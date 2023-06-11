@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+message RequestContext {
+  string id = 1;
+  string account = 2;
+  repeated string roles = 3;
+  string group = 4;
+}
+
+message GetRequest {
+  RequestContext ctx = 1;
+  string id = 2;
+}
+
+enum SortOrder {
+  asc = 0;
+  desc = 1;
+}
+
+message PageRequest {
+
+  string filter = 1;
+  string sort = 2;
+  SortOrder direction = 3;
+  string offset = 4;
+  uint32 limit = 5;
+
+}
