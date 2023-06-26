@@ -1,4 +1,4 @@
-package schema
+package sql
 
 import (
 	"context"
@@ -113,6 +113,20 @@ func LoadHistory(ctx context.Context, db *sql.DB) ([]HistoryRecord, error) {
 	return result, nil
 }
 
+func RecreateSchema(ctx context.Context, db *sql.DB, schemaName string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+	_, err := db.ExecContext(ctx, fmt.Sprintf(queryDropSchema, schemaName))
+	if err != nil {
+		return fmt.Errorf("failed to drop sql %s: %w", schemaName, err)
+	}
+	_, err = db.ExecContext(ctx, fmt.Sprintf(queryCreateSchema, schemaName))
+	if err != nil {
+		return fmt.Errorf("failed to create sql %s: %w", schemaName, err)
+	}
+	return nil
+}
+
 func assertChangeset(ctx context.Context, changeset []Change) bool {
 	seen := make(map[string]bool)
 	valid := true
@@ -165,14 +179,14 @@ func ensureSchemaTable(ctx context.Context, db *sql.DB) error {
 	}
 
 	log := zerolog.Ctx(ctx)
-	log.Info().Msg("schema table has been created")
+	log.Info().Msg("sql table has been created")
 	return nil
 }
 
 func applyChange(ctx context.Context, db *sql.DB, change Change) error {
 	// get log
 	log := zerolog.Ctx(ctx)
-	log.Info().Msgf("Upgrading DB schema to %s", change.Version)
+	log.Info().Msgf("Upgrading DB sql to %s", change.Version)
 
 	// Define timeout
 	var timeout time.Duration
@@ -231,7 +245,7 @@ func applyChange(ctx context.Context, db *sql.DB, change Change) error {
 		if err != nil {
 			return fmt.Errorf("execute command, tx commit failed: %w", err)
 		}
-		log.Info().Msgf("DB schema upgraded, new version %s", change.Version)
+		log.Info().Msgf("DB sql upgraded, new version %s", change.Version)
 		return nil
 	}()
 	return err

@@ -1,4 +1,4 @@
-package schema
+package sql
 
 import (
 	"context"
@@ -54,12 +54,12 @@ func Validate(ctx context.Context, db *sql.DB, expected Schema, strict bool) ([]
 		Name: expected.Name,
 	}
 	log := zerolog.Ctx(ctx)
-	log.Info().Msgf("Validating DB schema")
+	log.Info().Msgf("Validating DB sql")
 
 	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	// Load schema
+	// Load sql
 	if err := loadTables(ctx, db, &actual); err != nil {
 		return nil, fmt.Errorf("failed to load tables: %w", err)
 	}

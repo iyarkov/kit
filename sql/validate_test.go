@@ -1,4 +1,4 @@
-package schema
+package sql
 
 import (
 	"github.com/iyarkov/foundation/support"

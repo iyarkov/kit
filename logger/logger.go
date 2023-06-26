@@ -16,7 +16,7 @@ type Configuration struct {
 	Level string
 }
 
-func InitLogger(config Configuration) {
+func InitLogger(config *Configuration) {
 	var level zerolog.Level
 	switch config.Level {
 	case "debug":

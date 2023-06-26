@@ -1,15 +1,7 @@
 syntax = "proto3";
 
-message RequestContext {
-  string id = 1;
-  string account = 2;
-  repeated string roles = 3;
-  string group = 4;
-}
-
 message GetRequest {
-  RequestContext ctx = 1;
-  string id = 2;
+  string id = 1;
 }
 
 enum SortOrder {
@@ -18,11 +10,18 @@ enum SortOrder {
 }
 
 message PageRequest {
-
   string filter = 1;
   string sort = 2;
   SortOrder direction = 3;
   string offset = 4;
   uint32 limit = 5;
+}
 
+message Status {
+  uint32 code = 1;
+  repeated string details = 2;
+}
+
+message Messages {
+  repeated string message = 1;
 }

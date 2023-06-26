@@ -1,4 +1,4 @@
-package schema
+package sql
 
 // Schema History queries
 var queryTableExists = `
@@ -80,3 +80,6 @@ FROM
 WHERE
         tc.constraint_type = 'FOREIGN KEY'
   AND tc.table_schema = $1`
+
+var queryDropSchema = "DROP SCHEMA %s CASCADE"
+var queryCreateSchema = "CREATE SCHEMA %s"
