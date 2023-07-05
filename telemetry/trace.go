@@ -3,7 +3,6 @@ package telemetry
 import (
 	"context"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -34,7 +33,8 @@ func traceNoOps() {
 	tracer = provider.Tracer("application")
 }
 
-func traceConsole() {
+func traceConsole(ctx context.Context) {
+	log := zerolog.Ctx(ctx)
 	exporter, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to initialize stdout trace exporter")
@@ -51,12 +51,12 @@ func traceConsole() {
 	log.Info().Msg("stdout trace exporter initialized")
 }
 
-func shutdownTrace() {
+func shutdownTrace(ctx context.Context) {
+	log := zerolog.Ctx(ctx)
 	if tracerProvider == nil {
 		return
 	}
 	log.Info().Msg("Stopping trace exporter")
-	ctx := context.Background()
 
 	if err := tracerProvider.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Msg("trace exporter shutdown failed")
@@ -66,6 +66,7 @@ func shutdownTrace() {
 }
 
 func traceDocker(ctx context.Context) {
+	log := zerolog.Ctx(ctx)
 	client := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure())
 	exporter, err := otlptrace.New(ctx, client)
 	if err != nil {

@@ -3,12 +3,17 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"github.com/iyarkov/foundation/logger"
+	"github.com/iyarkov/foundation/support"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
 	sdk "go.opentelemetry.io/otel/sdk/metric"
+	"net/http"
 	"os"
 )
 
@@ -19,7 +24,8 @@ func metricNoOps() {
 	Meter = noop.NewMeterProvider().Meter("application")
 }
 
-func metricConsole() {
+func metricConsole(ctx context.Context) {
+	log := zerolog.Ctx(ctx)
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	exporter, err := stdoutmetric.New(stdoutmetric.WithEncoder(encoder))
@@ -32,25 +38,21 @@ func metricConsole() {
 		sdk.WithResource(newResource()),
 		sdk.WithReader(sdk.NewPeriodicReader(exporter)),
 	)
-	Meter = metricProvider.Meter(
-		"meter",
-		metric.WithInstrumentationVersion("1.0"),
-		metric.WithSchemaURL("my.app.com"),
-	)
+	Meter = metricProvider.Meter("meter")
 	log.Info().Msg("stdout metric exporter initialized")
 }
 
-func shutdownMetric() {
+func shutdownMetric(ctx context.Context) {
+	log := zerolog.Ctx(ctx)
 	if metricProvider == nil {
 		return
 	}
-	log.Info().Msg("Stopping stdout metric exporter")
-	ctx := context.Background()
+	log.Info().Msg("Stopping metric exporter")
 
 	if err := metricProvider.Shutdown(ctx); err != nil {
-		log.Error().Err(err).Msg("stdout metric exporter shutdown failed")
+		log.Error().Err(err).Msg("metric exporter shutdown failed")
 	}
-	log.Info().Msg("stdout metric exporter stopped")
+	log.Info().Msg("metric exporter stopped")
 }
 
 func metricFlush(ctx context.Context) {
@@ -61,4 +63,35 @@ func metricFlush(ctx context.Context) {
 	if err != nil {
 		zerolog.Ctx(ctx).Error().Err(err).Msg("tracer flush failed")
 	}
+}
+
+func metricDocker(ctx context.Context) {
+	log := zerolog.Ctx(ctx)
+	exporter, err := prometheus.New()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize prometheus metric exporter")
+	}
+	metricProvider = sdk.NewMeterProvider(sdk.WithReader(exporter))
+	Meter = metricProvider.Meter(support.AppManifest.Name)
+
+	go func() {
+		srv := http.Server {
+			Addr: ":8081",
+			Handler: promhttp.Handler(),
+		}
+		support.OnSigTerm(func(shutdownContext context.Context, signal os.Signal) {
+			shutdownContext = logger.WithLogger(shutdownContext)
+			shutdownLog := zerolog.Ctx(shutdownContext)
+			shutdownLog.Info().Msg("Shutting down metrics HTTP server")
+			if shutdownErr := srv.Shutdown(shutdownContext); shutdownErr != nil {
+				shutdownLog.Error().Err(shutdownErr).Msg("Shutting down metrics HTTP server failed")
+			} else {
+				shutdownLog.Info().Msgf("metrics HTTP server stopped")
+			}
+		})
+		listenErr := srv.ListenAndServe()
+		if listenErr != nil && !errors.Is(listenErr, http.ErrServerClosed){
+			zerolog.Ctx(ctx).Error().Err(listenErr).Msg("metrics HTTP server failed to start")
+		}
+	}()
 }

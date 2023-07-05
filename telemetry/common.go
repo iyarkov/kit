@@ -2,10 +2,12 @@ package telemetry
 
 import (
 	"context"
+	"github.com/iyarkov/foundation/logger"
 	"github.com/iyarkov/foundation/support"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
+	"os"
 )
 
 type Configuration struct {
@@ -18,22 +20,22 @@ func InitTelemetry(ctx context.Context, cfg *Configuration) {
 	switch cfg.Mode {
 	case "console":
 		log.Debug().Msg("Initializing console telemetry")
-		metricConsole()
-		traceConsole()
+		metricConsole(ctx)
+		traceConsole(ctx)
 	case "docker":
 		log.Debug().Msg("Initializing docker telemetry")
-		metricNoOps()
+		metricDocker(ctx)
 		traceDocker(ctx)
 	default:
 		log.Debug().Msg("Initializing NoOps telemetry")
 		metricNoOps()
 		traceNoOps()
 	}
-}
-
-func Shutdown() {
-	shutdownMetric()
-	shutdownTrace()
+	support.OnSigTerm(func(shutdownCtx context.Context, signal os.Signal) {
+		shutdownCtx = logger.WithLogger(shutdownCtx)
+		shutdownMetric(shutdownCtx)
+		shutdownTrace(shutdownCtx)
+	})
 }
 
 func Flush(ctx context.Context) {

@@ -11,12 +11,14 @@ import (
 	"github.com/iyarkov/foundation/tls"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	"time"
 )
 
 var contextIdMeta = "contextId"
@@ -142,4 +144,34 @@ func ClientTrace(ctx context.Context, method string, req, reply interface{}, cc 
 	ctx, span := telemetry.StartSpan(ctx, fmt.Sprintf("grpc%s", method))
 	defer span.End()
 	return invoker(ctx, method, req, reply, cc, opts...)
+}
+
+func NewServerMetricInterceptor(initCtx context.Context) (grpc.UnaryServerInterceptor, error) {
+	var requestMetric metric.Int64Histogram
+	requestMetric, err := telemetry.Meter.Int64Histogram("grpc", metric.WithUnit("ms"))
+	if err != nil {
+		return nil, err
+	}
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		startTime := time.Now()
+		resp, err = handler(ctx, req)
+
+		attributes := make([]attribute.KeyValue, 0)
+		attributes = append(attributes, attribute.String("method", info.FullMethod))
+		var code codes.Code
+		if err == nil {
+			code = codes.OK
+		} else {
+			grpcStatus, ok := status.FromError(err)
+			if ok {
+				code = grpcStatus.Code()
+			} else {
+				code = codes.Internal
+			}
+		}
+		attributes = append(attributes, attribute.String("code", code.String()))
+		requestMetric.Record(ctx, time.Since(startTime).Milliseconds(), metric.WithAttributes(attributes...))
+
+		return
+	}, nil
 }
