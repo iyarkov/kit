@@ -3,7 +3,7 @@ package sql
 import (
 	"context"
 	"fmt"
-	"github.com/iyarkov/foundation/telemetry"
+	"github.com/iyarkov/kit/telemetry"
 	"github.com/jackc/pgx/v5"
 )
 

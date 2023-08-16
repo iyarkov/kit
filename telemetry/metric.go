@@ -4,8 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/iyarkov/foundation/logger"
-	"github.com/iyarkov/foundation/support"
+	"github.com/iyarkov/kit/logger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/exporters/prometheus"
@@ -75,8 +74,8 @@ func metricDocker(ctx context.Context) {
 	Meter = metricProvider.Meter(support.AppManifest.Name)
 
 	go func() {
-		srv := http.Server {
-			Addr: ":8081",
+		srv := http.Server{
+			Addr:    ":8081",
 			Handler: promhttp.Handler(),
 		}
 		support.OnSigTerm(func(shutdownContext context.Context, signal os.Signal) {
@@ -90,7 +89,7 @@ func metricDocker(ctx context.Context) {
 			}
 		})
 		listenErr := srv.ListenAndServe()
-		if listenErr != nil && !errors.Is(listenErr, http.ErrServerClosed){
+		if listenErr != nil && !errors.Is(listenErr, http.ErrServerClosed) {
 			zerolog.Ctx(ctx).Error().Err(listenErr).Msg("metrics HTTP server failed to start")
 		}
 	}()

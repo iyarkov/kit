@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-message GetRequest {
-  string id = 1;
-}
+package iyarkov.kit;
+
+option go_package = "github.com/iyarkov/kit/support/protobuf";
 
 enum SortOrder {
   asc = 0;
@@ -15,13 +15,5 @@ message PageRequest {
   SortOrder direction = 3;
   string offset = 4;
   uint32 limit = 5;
-}
-
-message Status {
-  uint32 code = 1;
-  repeated string details = 2;
-}
-
-message Messages {
-  repeated string message = 1;
+  repeated string fields = 6;
 }

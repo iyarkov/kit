@@ -18,3 +18,12 @@ func CloseWithWarning(ctx context.Context, cls Closeable, msg string) {
 		zerolog.Ctx(ctx).Warn().Err(err).Msg(msg)
 	}
 }
+
+func DoWithWarning(ctx context.Context, callback func() error, msg string) {
+	if callback == nil || reflect.ValueOf(callback).IsNil() {
+		return
+	}
+	if err := callback(); err != nil {
+		zerolog.Ctx(ctx).Warn().Err(err).Msg(msg)
+	}
+}

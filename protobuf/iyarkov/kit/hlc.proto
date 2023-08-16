@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package iyarkov.kit;
+
+option go_package = "github.com/iyarkov/kit/hlc/protobuf";
+
+message Stamp {
+  int32 time = 1;
+  int32 count = 2;
+  int32 node = 3;
+}

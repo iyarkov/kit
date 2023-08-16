@@ -2,7 +2,6 @@ package logger
 
 import (
 	"context"
-	"github.com/iyarkov/foundation/support"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"
@@ -64,8 +63,9 @@ func WithLogger(ctx context.Context) context.Context {
 	idx := support.ContextId(ctx)
 	if idx != "" {
 		return log.Logger.With().Str("contextId", idx).Logger().WithContext(ctx)
+	} else {
+		return log.Logger.WithContext(ctx)
 	}
-	return ctx
 }
 
 func WithContextIdAndLogger(ctx context.Context, contextId string) context.Context {

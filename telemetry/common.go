@@ -2,8 +2,8 @@ package telemetry
 
 import (
 	"context"
-	"github.com/iyarkov/foundation/logger"
-	"github.com/iyarkov/foundation/support"
+	"github.com/iyarkov/kit/logger"
+	"github.com/iyarkov/kit/support"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"

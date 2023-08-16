@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package iyarkov.kit;
+
+option go_package = "github.com/iyarkov/kit/support/protobuf";
+
+message ObjectRequest {
+  string id = 1;
+}
+
+enum ObjectStatus {
+  pending = 0;
+  active = 1;
+  deleted = 2;
+  purged = 3;
+}
