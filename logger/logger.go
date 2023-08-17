@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"github.com/iyarkov/kit/support"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"

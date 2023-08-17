@@ -22,6 +22,9 @@ func NewPassword(value string) Password {
 }
 
 func (p Password) Value() string {
+	if p.value == nil {
+		return ""
+	}
 	return *p.value
 }
 

@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
+	"github.com/iyarkov/kit/support"
+	natsio "github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
 )
 
@@ -20,12 +21,12 @@ type Configuration struct {
 	Workers int
 }
 
-type MessageHandler func(ctx context.Context, msg *nats.Msg) error
+type MessageHandler func(ctx context.Context, msg *natsio.Msg) error
 
 type Messenger struct {
-	conn         *nats.Conn
-	jet          nats.JetStreamContext
-	subscription *nats.Subscription
+	conn         *natsio.Conn
+	jet          natsio.JetStreamContext
+	subscription *natsio.Subscription
 
 	handlers map[string]MessageHandler
 
@@ -52,7 +53,7 @@ func (m *Messenger) AddHandler(subject string, handler MessageHandler) error {
 
 func (m *Messenger) Start(ctx context.Context, cfg *Configuration) error {
 	url := fmt.Sprintf("nats://%s:%d", cfg.Host, cfg.Port)
-	conn, err := nats.Connect(url, nats.ClosedHandler(func(conn *nats.Conn) {
+	conn, err := natsio.Connect(url, natsio.ClosedHandler(func(conn *natsio.Conn) {
 		close(m.closeChan)
 	}))
 	if err != nil {
@@ -65,8 +66,8 @@ func (m *Messenger) Start(ctx context.Context, cfg *Configuration) error {
 	}
 	m.jet = jet
 
-	ch := make(chan *nats.Msg, cfg.Workers)
-	_, err = jet.ChanQueueSubscribe(cfg.Consumer.Subject, cfg.Consumer.Queue, ch, nats.Bind(cfg.Stream, cfg.Consumer.Name))
+	ch := make(chan *natsio.Msg, cfg.Workers)
+	_, err = jet.ChanQueueSubscribe(cfg.Consumer.Subject, cfg.Consumer.Queue, ch, natsio.Bind(cfg.Stream, cfg.Consumer.Name))
 	if err != nil {
 		return fmt.Errorf("subscribe failed: %w", err)
 	}
@@ -103,12 +104,12 @@ func (m *Messenger) Stop(ctx context.Context) {
 	}
 }
 
-func (m *Messenger) worker(id int, inputChan chan *nats.Msg) {
+func (m *Messenger) worker(id int, inputChan chan *natsio.Msg) {
 	// Close worker when done
 	closeChan := make(chan context.Context, 1)
 	m.workers = append(m.workers, closeChan)
 
-	handleSafe := func(ctx context.Context, msg *nats.Msg, handler MessageHandler) error {
+	handleSafe := func(ctx context.Context, msg *natsio.Msg, handler MessageHandler) error {
 		defer func() {
 			log := zerolog.Ctx(ctx)
 			if r := recover(); r != nil {
@@ -146,7 +147,7 @@ func (m *Messenger) worker(id int, inputChan chan *nats.Msg) {
 					return
 				}
 
-				if err := msg.Ack(nats.ContextOpt{Context: ctx}); err != nil {
+				if err := msg.Ack(natsio.ContextOpt{Context: ctx}); err != nil {
 					log.Error().Err(err).Msg("Ack timeout")
 					return
 				}

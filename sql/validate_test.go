@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"github.com/iyarkov/kit/support"
 	"reflect"
 	"strings"
 	"testing"

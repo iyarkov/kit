@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/iyarkov/kit/support"
 	"github.com/rs/zerolog"
 )
 

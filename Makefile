@@ -15,5 +15,3 @@ tools:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
 
 build: test
-	rm build/*
-	cd cmd && go build -o ../build -v

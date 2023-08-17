@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/iyarkov/kit/logger"
+	"github.com/iyarkov/kit/support"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/exporters/prometheus"
